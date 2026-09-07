@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>우쿨렐레 튜너</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background-color: #f1f5f9;
+      color: #1e293b;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    .tuner-card {
+      background: #ffffff;
+      padding: 30px 24px;
+      border-radius: 24px;
+      box-shadow: 0 12px 30px rgba(0, 0, 0, 0.08);
+      width: 100%;
+      max-width: 440px;
+      text-align: center;
+      position: relative;
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 20px;
+    }
+
+    /* 1. 4개 줄 정보 및 상태 표시등 */
+    .string-indicators {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    .string-box {
+      background: #f8fafc;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      padding: 10px 4px;
+      font-size: 0.8rem;
+      color: #64748b;
+      transition: all 0.25s ease;
+      cursor: pointer;
+    }
+    .string-box .num {
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+    .string-box .note {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: #334155;
+    }
+    /* 선택된 줄 활성화 스타일 (불 들어오는 효과) */
+    .string-box.active {
+      background: #eff6ff;
+      border-color: #2563eb;
+      color: #1d4ed8;
+      box-shadow: 0 0 14px rgba(37, 99, 235, 0.4);
+      transform: translateY(-2px);
+    }
+    .string-box.active .note {
+      color: #1d4ed8;
+    }
+
+    .selected-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: #2563eb;
+      min-height: 1.6rem;
+    }
+    .frequency {
+      font-size: 1.1rem;
+      color: #64748b;
+      margin-top: 4px;
+      min-height: 1.5rem;
+    }
+    canvas {
+      width: 100%;
+      height: auto;
+      margin: 10px 0;
+    }
+    .cent-readout {
+      font-size: 2rem;
+      font-weight: 800;
+      min-height: 2.5rem;
+      margin-top: 4px;
+    }
+
+    /* 맞춤 안내 문구 영역 */
+    .status-instruction {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-top: 8px;
+      min-height: 2.8rem;
+      padding: 6px 12px;
+      border-radius: 8px;
+      background: #f8fafc;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-main {
+      margin-top: 24px;
+      padding: 15px 24px;
+      font-size: 1.05rem;
+      font-weight: 700;
+      background-color: #2563eb;
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: background 0.2s ease, transform 0.1s ease;
+      width: 100%;
+    }
+    .btn-main:hover {
+      background-color: #1d4ed8;
+    }
+    .btn-main:active {
+      transform: scale(0.98);
+    }
+    .btn-main.recording {
+      background-color: #e11d48;
+    }
+
+    /* 줄 선택 모달 팝업 */
+    .modal-overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(15, 23, 42, 0.65);
+      border-radius: 24px;
+      backdrop-filter: blur(4px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .modal-content {
+      background: #ffffff;
+      padding: 24px 20px;
+      border-radius: 18px;
+      width: 88%;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    }
+    .modal-title {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #0f172a;
+      margin-bottom: 16px;
+    }
+    .string-select-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .btn-select-string {
+      padding: 14px 10px;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
+      background: #f8fafc;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: #1e293b;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn-select-string:hover {
+      border-color: #2563eb;
+      background: #eff6ff;
+      color: #2563eb;
+    }
+    .btn-close-modal {
+      margin-top: 14px;
+      background: none;
+      border: none;
+      color: #94a3b8;
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="tuner-card">
+    <h1>우쿨렐레 튜너</h1>
+
+    <!-- 1. 줄 정보 및 불 들어오는 인디케이터 -->
+    <div class="string-indicators">
+      <div class="string-box" id="box-4">
+        <div class="num">4번줄</div>
+        <div class="note">H솔 (G)</div>
+      </div>
+      <div class="string-box" id="box-3">
+        <div class="num">3번줄</div>
+        <div class="note">도 (C)</div>
+      </div>
+      <div class="string-box" id="box-2">
+        <div class="num">2번줄</div>
+        <div class="note">미 (E)</div>
+      </div>
+      <div class="string-box" id="box-1">
+        <div class="num">1번줄</div>
+        <div class="note">라 (A)</div>
+      </div>
+    </div>
+
+    <!-- 측정 상태 영역 -->
+    <div class="selected-title" id="selectedStringDisplay">줄을 선택해 주세요</div>
+    <div class="frequency" id="freqDisplay">-</div>
+
+    <!-- 캔버스 게이지 -->
+    <canvas id="gaugeCanvas" width="400" height="240"></canvas>
+
+    <div class="cent-readout" id="centDisplay">0.0 Cent</div>
+    
+    <!-- 5단계 맞춤 안내 문구 표시 영역 -->
+    <div class="status-instruction" id="statusInstruction">조율 시작 버튼을 눌러주세요</div>
+
+    <!-- 조율 시작/중지 버튼 -->
+    <button id="toggleBtn" class="btn-main">조율 시작</button>
+
+    <!-- 2. 몇 번 줄을 조율할지 묻는 팝업 모달 -->
+    <div class="modal-overlay" id="modalOverlay">
+      <div class="modal-content">
+        <div class="modal-title">몇 번 줄을 조율하겠습니까?</div>
+        <div class="string-select-grid">
+          <button class="btn-select-string" data-string="4">4번줄 H솔 (G)</button>
+          <button class="btn-select-string" data-string="3">3번줄 도 (C)</button>
+          <button class="btn-select-string" data-string="2">2번줄 미 (E)</button>
+          <button class="btn-select-string" data-string="1">1번줄 라 (A)</button>
+        </div>
+        <button class="btn-close-modal" id="modalCloseBtn">취소</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 우쿨렐레 표준 튜닝 주파수 정보
+    const STRINGS = {
+      4: { name: '4번줄 H솔 (G)', targetFreq: 392.00 },
+      3: { name: '3번줄 도 (C)',   targetFreq: 261.63 },
+      2: { name: '2번줄 미 (E)',   targetFreq: 329.63 },
+      1: { name: '1번줄 라 (A)',   targetFreq: 440.00 }
+    };
+
+    let selectedStringNumber = null;
+    let audioContext = null;
+    let analyser = null;
+    let microphone = null;
+    let isRunning = false;
+    let animationId = null;
+
+    let targetCent = 0;
+    let smoothCent = 0;
+
+    // DOM 요소
+    const toggleBtn = document.getElementById('toggleBtn');
+    const modalOverlay = document.getElementById('modalOverlay');
+    const modalCloseBtn = document.getElementById('modalCloseBtn');
+    const selectedStringDisplay = document.getElementById('selectedStringDisplay');
+    const freqDisplay = document.getElementById('freqDisplay');
+    const centDisplay = document.getElementById('centDisplay');
+    const statusInstruction = document.getElementById('statusInstruction');
+    const canvas = document.getElementById('gaugeCanvas');
+    const ctx = canvas.getContext('2d');
+
+    // 1. 줄 선택 버튼 모달 열기/닫기
+    toggleBtn.addEventListener('click', () => {
+      if (isRunning) {
+        stopTuner();
+      } else {
+        modalOverlay.classList.add('open');
+      }
+    });
+
+    modalCloseBtn.addEventListener('click', () => {
+      modalOverlay.classList.remove('open');
+    });
+
+    // 2. 모달에서 줄 선택 시 동작
+    document.querySelectorAll('.btn-select-string').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const stringNum = parseInt(e.currentTarget.getAttribute('data-string'), 10);
+        modalOverlay.classList.remove('open');
+        selectAndHighlightString(stringNum);
+        await startTuning(stringNum);
+      });
+    });
+
+    // 상단 4개 줄 박스 클릭으로도 즉시 전환 가능
+    [4, 3, 2, 1].forEach(num => {
+      document.getElementById(`box-${num}`).addEventListener('click', async () => {
+        selectAndHighlightString(num);
+        if (!isRunning) {
+          await startTuning(num);
+        }
+      });
+    });
+
+    // 선택된 줄 강조 (불 들어오는 효과)
+    function selectAndHighlightString(stringNum) {
+      selectedStringNumber = stringNum;
+      [1, 2, 3, 4].forEach(n => {
+        const el = document.getElementById(`box-${n}`);
+        if (n === stringNum) {
+          el.classList.add('active');
+        } else {
+          el.classList.remove('active');
+        }
+      });
+      selectedStringDisplay.textContent = `${STRINGS[stringNum].name} 조율 중`;
+    }
+
+    async function startTuning(stringNum) {
+      try {
+        if (!audioContext) {
+          audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioContext.state === 'suspended') {
+          await audioContext.resume();
+        }
+
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        microphone = audioContext.createMediaStreamSource(stream);
+        analyser = audioContext.createAnalyser();
+        analyser.fftSize = 4096;
+        microphone.connect(analyser);
+
+        isRunning = true;
+        toggleBtn.textContent = '조율 중지';
+        toggleBtn.classList.add('recording');
+        freqDisplay.textContent = '현을 튕겨주세요...';
+        statusInstruction.textContent = '소리를 듣고 있습니다';
+        statusInstruction.style.color = '#475569';
+
+        processAudio();
+      } catch (err) {
+        alert('마이크 접근 권한이 필요합니다: ' + err.message);
+      }
+    }
+
+    function stopTuner() {
+      isRunning = false;
+      if (audioContext) {
+        audioContext.close();
+        audioContext = null;
+      }
+      cancelAnimationFrame(animationId);
+      toggleBtn.textContent = '조율 시작';
+      toggleBtn.classList.remove('recording');
+      freqDisplay.textContent = '-';
+      centDisplay.textContent = '0.0 Cent';
+      centDisplay.style.color = '#1e293b';
+      statusInstruction.textContent = '조율 시작 버튼을 눌러주세요';
+      statusInstruction.style.color = '#64748b';
+      targetCent = 0;
+      smoothCent = 0;
+      drawGauge(0);
+    }
+
+    // 자기상관(Autocorrelation) 주파수 분석 알고리즘
+    function autoCorrelate(buf, sampleRate) {
+      let sumSquares = 0;
+      for (let i = 0; i < buf.length; i++) {
+        sumSquares += buf[i] * buf[i];
+      }
+      const rms = Math.sqrt(sumSquares / buf.length);
+      if (rms < 0.015) return -1; // 미세 소음 무시
+
+      const minFreq = 180;
+      const maxFreq = 650;
+      const minLag = Math.floor(sampleRate / maxFreq);
+      const maxLag = Math.floor(sampleRate / minFreq);
+
+      let bestLag = -1;
+      let maxCorrelation = 0;
+
+      for (let lag = minLag; lag <= maxLag; lag++) {
+        let correlation = 0;
+        for (let i = 0; i < buf.length - lag; i++) {
+          correlation += buf[i] * buf[i + lag];
+        }
+        if (correlation > maxCorrelation) {
+          maxCorrelation = correlation;
+          bestLag = lag;
+        }
+      }
+
+      if (bestLag === -1 || maxCorrelation <= 0) return -1;
+      return sampleRate / bestLag;
+    }
+
+    function processAudio() {
+      if (!isRunning) return;
+
+      const buffer = new Float32Array(analyser.fftSize);
+      analyser.getFloatTimeDomainData(buffer);
+
+      const pitch = autoCorrelate(buffer, audioContext.sampleRate);
+
+      if (pitch !== -1 && selectedStringNumber) {
+        const target = STRINGS[selectedStringNumber];
+        
+        // Cent = 1200 * log2(pitch / targetFreq)
+        const cent = 1200 * (Math.log(pitch / target.targetFreq) / Math.LN2);
+        targetCent = Math.max(-50, Math.min(50, cent));
+
+        freqDisplay.textContent = `${pitch.toFixed(1)} Hz (기준: ${target.targetFreq} Hz)`;
+        centDisplay.textContent = `${cent > 0 ? '+' : ''}${cent.toFixed(1)} Cent`;
+
+        // 5단계 조율 피드백 메시지 처리
+        updateStatusMessage(cent);
+      }
+
+      // 게이지 바늘 부드러운 움직임 보간
+      smoothCent += (targetCent - smoothCent) * 0.15;
+      drawGauge(smoothCent);
+
+      animationId = requestAnimationFrame(processAudio);
+    }
+
+    // 센트 오차에 따른 5단계 맞춤 안내 문구 반영
+    function updateStatusMessage(cent) {
+      if (cent < -15) {
+        // 많이 낮음 (센트가 -15 미만)
+        statusInstruction.textContent = '음이 많이 낮으니 조여서 올려 주세요';
+        statusInstruction.style.color = '#1d4ed8';
+        centDisplay.style.color = '#1d4ed8';
+      } else if (cent < -4) {
+        // 약간 낮음 (-15 이상 -4 미만)
+        statusInstruction.textContent = '음이 낮으니 더 조여서 올려주세요';
+        statusInstruction.style.color = '#2563eb';
+        centDisplay.style.color = '#2563eb';
+      } else if (cent <= 4) {
+        // 적정 구간 (±4 센트 이내)
+        statusInstruction.textContent = '이제 천천히 조심히 (완벽합니다!)';
+        statusInstruction.style.color = '#16a34a';
+        centDisplay.style.color = '#16a34a';
+      } else if (cent <= 15) {
+        // 약간 높음 (+4 초과 +15 이하)
+        statusInstruction.textContent = '음이 높으니 더 풀어서 낮춰주세요';
+        statusInstruction.style.color = '#ea580c';
+        centDisplay.style.color = '#ea580c';
+      } else {
+        // 많이 높음 (+15 초과)
+        statusInstruction.textContent = '음이 많이 높으니 풀어서 낮춰주세요';
+        statusInstruction.style.color = '#dc2626';
+        centDisplay.style.color = '#dc2626';
+      }
+    }
+
+    // 아날로그 게이지 캔버스 그리기
+    function drawGauge(centVal) {
+      const width = canvas.width;
+      const height = canvas.height;
+      const centerX = width / 2;
+      const centerY = height * 0.88;
+      const radius = width * 0.42;
+
+      ctx.clearRect(0, 0, width, height);
+
+      const sweepAngle = (120 * Math.PI) / 180;
+      const startAngle = -Math.PI / 2 - (sweepAngle / 2);
+
+      // 게이지 호 배경
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, startAngle, startAngle + sweepAngle);
+      ctx.lineWidth = 6;
+      ctx.strokeStyle = '#e2e8f0';
+      ctx.stroke();
+
+      // 성공(In-Tune) 구간 녹색 호
+      const inTuneSweep = sweepAngle * (10 / 100);
+      const inTuneStart = -Math.PI / 2 - (inTuneSweep / 2);
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, radius, inTuneStart, inTuneStart + inTuneSweep);
+      ctx.lineWidth = 8;
+      ctx.strokeStyle = '#16a34a';
+      ctx.stroke();
+
+      // 눈금선
+      const ticks = 10;
+      for (let i = 0; i <= ticks; i++) {
+        const tickProgress = i / ticks;
+        const tickAngle = startAngle + (sweepAngle * tickProgress);
+        const isCenter = i === ticks / 2;
+        const isMajor = i % 5 === 0;
+
+        const tickLength = isCenter ? 20 : (isMajor ? 14 : 8);
+        ctx.beginPath();
+        ctx.moveTo(
+          centerX + (radius - tickLength) * Math.cos(tickAngle),
+          centerY + (radius - tickLength) * Math.sin(tickAngle)
+        );
+        ctx.lineTo(
+          centerX + radius * Math.cos(tickAngle),
+          centerY + radius * Math.sin(tickAngle)
+        );
+        ctx.lineWidth = isCenter ? 3 : (isMajor ? 2 : 1);
+        ctx.strokeStyle = isCenter ? '#16a34a' : (isMajor ? '#334155' : '#94a3b8');
+        ctx.stroke();
+      }
+
+      // 바늘 회전 각도 계산
+      const clampedCent = Math.max(-50, Math.min(50, centVal));
+      const normalizedCent = (clampedCent + 50) / 100;
+      const needleAngle = startAngle + (sweepAngle * normalizedCent);
+
+      let needleColor = '#2563eb';
+      if (Math.abs(clampedCent) <= 4.0) {
+        needleColor = '#16a34a';
+      } else if (clampedCent > 4.0) {
+        needleColor = '#dc2626';
+      }
+
+      // 바늘 본체
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(centerX, centerY);
+      ctx.lineTo(
+        centerX + (radius * 0.82) * Math.cos(needleAngle),
+        centerY + (radius * 0.82) * Math.sin(needleAngle)
+      );
+      ctx.lineWidth = 4;
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = needleColor;
+      ctx.stroke();
+      ctx.restore();
+
+      // 바늘 축 피벗
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, 8, 0, 2 * Math.PI);
+      ctx.fillStyle = '#0f172a';
+      ctx.fill();
+
+      ctx.beginPath();
+      ctx.arc(centerX, centerY, 3, 0, 2 * Math.PI);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+    }
+
+    // 초기 화면 게이지 렌더링
+    drawGauge(0);
+  </script>
+</body>
+</html>
